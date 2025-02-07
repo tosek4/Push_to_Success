@@ -49,31 +49,70 @@ def generate_obstacles():
             obstacles.add((ox, oy))
     return obstacles
 
+
 def generate_star():
+    valid_positions = set((x, y) for x in range(GRID_SIZE) for y in range(GRID_SIZE))
+    invalid_positions = obstacles | {finish_position, box_position}
+    possible_positions = list(valid_positions - invalid_positions)
+
+    if not possible_positions:
+        return set()  # No valid position available
+
+    sx, sy = random.choice(possible_positions)
+    return {(sx, sy)}
+
+def generate_box_position():
     while True:
-        sx, sy = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
-        if (sx, sy) not in start_positions and (sx, sy) not in obstacles:
-            return {(sx, sy)}
+        bx, by = random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2)
+        if (bx, by) not in obstacles and (bx, by) != finish_position:
+            return bx, by
+
+#
+# def reset_game():
+#     global excavator, finish_position, obstacles, box_position, level
+#     finish_position = generate_target_position()
+#     start_positions = [(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))]
+#     start_position = random.choice(start_positions)
+#     obstacles = generate_obstacles()
+#     box_position = generate_box_position()  # Ensuring box is placed correctly
+#     level = 1
+#     excavator = MainCharacter(*start_position)
+
 
 def reset_game():
-    global excavator, finish_position, obstacles, box_position, level
+    global excavator, finish_position, obstacles, box_position, level, stars_collected, stars
     finish_position = generate_target_position()
-    start_positions = [(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))]
-    start_position = random.choice(start_positions)
     obstacles = generate_obstacles()
     box_position = (random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2))
+    stars_collected = 0
     level = 1
-    excavator = MainCharacter(*start_position)
-
+    excavator = MainCharacter(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))
+    stars = generate_star()
 # Game variables
 finish_position = generate_target_position()
 start_positions = [(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))]
 start_position = random.choice(start_positions)
 obstacles = generate_obstacles()
-box_position = (random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2))
+box_position = generate_box_position()
 stars = generate_star()
 level = 1
 stars_collected = 0
+
+
+def start_screen():
+    while True:
+        screen.fill(BLACK)
+        text = font.render("Press ENTER to Start", True, WHITE)
+        screen.blit(text, ((SCREEN_WIDTH - text.get_width()) // 2, SCREEN_HEIGHT // 2))
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return
+
 
 class MainCharacter:
     def __init__(self, x, y):
@@ -142,6 +181,7 @@ def draw_button(text, x, y, w, h, color, action=None):
 
 # Game loop
 def main():
+    start_screen()
     global excavator
     while True:
         screen.fill(GRAY)
@@ -202,3 +242,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
