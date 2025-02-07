@@ -61,11 +61,22 @@ def generate_star():
     sx, sy = random.choice(possible_positions)
     return {(sx, sy)}
 
+# def generate_box_position():
+#     while True:
+#         bx, by = random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2)
+#         if (bx, by) not in obstacles and (bx, by) != finish_position:
+#             return bx, by
+# #
 def generate_box_position():
     while True:
         bx, by = random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2)
+
+        # Check if the box is not in obstacles and not at the finish position
         if (bx, by) not in obstacles and (bx, by) != finish_position:
-            return bx, by
+            # Ensure no diagonal blocking
+            diagonals = {(bx + 1, by + 1), (bx - 1, by - 1)}
+            if not diagonals & obstacles:
+                return bx, by
 
 #
 # def reset_game():
@@ -83,7 +94,7 @@ def reset_game():
     global excavator, finish_position, obstacles, box_position, level, stars_collected, stars
     finish_position = generate_target_position()
     obstacles = generate_obstacles()
-    box_position = (random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2))
+    box_position = generate_box_position()
     stars_collected = 0
     level = 1
     excavator = MainCharacter(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))
