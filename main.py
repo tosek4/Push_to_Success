@@ -21,17 +21,20 @@ RED = (200, 0, 0)
 YELLOW = (255, 255, 0)
 GREEN = (0, 200, 0)
 BLUE = (0, 100, 200)
-
+button_color = (200, 50, 50)
+button_hover_color = (255, 0, 0)
 # Setup screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Push to Success")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 36)
+fontTwo = pygame.font.Font(None, 50)
 
 # Load assets
 star_image = pygame.transform.scale(pygame.image.load("assets/Star.png"), (CELL_SIZE, CELL_SIZE))
 wall_block = pygame.transform.scale(pygame.image.load("assets/Wall_Block_Tall.png"), (CELL_SIZE, CELL_SIZE))
 box_image = pygame.transform.scale(pygame.image.load("assets/Box.png"), (CELL_SIZE, CELL_SIZE))
+
 
 # Function to generate random target position
 def generate_target_position():
@@ -61,33 +64,26 @@ def generate_star():
     sx, sy = random.choice(possible_positions)
     return {(sx, sy)}
 
-# def generate_box_position():
-#     while True:
-#         bx, by = random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2)
-#         if (bx, by) not in obstacles and (bx, by) != finish_position:
-#             return bx, by
-# #
+
 def generate_box_position():
     while True:
         bx, by = random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2)
-
-        # Check if the box is not in obstacles and not at the finish position
         if (bx, by) not in obstacles and (bx, by) != finish_position:
-            # Ensure no diagonal blocking
-            diagonals = {(bx + 1, by + 1), (bx - 1, by - 1)}
-            if not diagonals & obstacles:
+            adjacent_positions = {
+                (bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1),
+                (bx + 1, by + 1), (bx - 1, by - 1), (bx + 1, by - 1), (bx - 1, by + 1)
+            }
+            if not adjacent_positions & obstacles:
                 return bx, by
 
-#
-# def reset_game():
-#     global excavator, finish_position, obstacles, box_position, level
-#     finish_position = generate_target_position()
-#     start_positions = [(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))]
-#     start_position = random.choice(start_positions)
-#     obstacles = generate_obstacles()
-#     box_position = generate_box_position()  # Ensuring box is placed correctly
-#     level = 1
-#     excavator = MainCharacter(*start_position)
+
+def start_new_level():
+    global excavator, finish_position, obstacles, box_position, level, stars_collected, stars
+    finish_position = generate_target_position()
+    obstacles = generate_obstacles()
+    box_position = generate_box_position()
+    excavator = MainCharacter(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))
+    stars = generate_star()
 
 
 def reset_game():
@@ -99,6 +95,8 @@ def reset_game():
     level = 1
     excavator = MainCharacter(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))
     stars = generate_star()
+
+
 # Game variables
 finish_position = generate_target_position()
 start_positions = [(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))]
@@ -109,20 +107,57 @@ stars = generate_star()
 level = 1
 stars_collected = 0
 
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+pygame.display.set_caption("My Pygame Game")
+
+# Load background image (optional)
+background_image = pygame.image.load("assets/bg.jpg")  # Ensure the image is in the 'assets' folder
+background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+
+def draw_text(text, font, color, x, y):
+    """ Helper function to draw text on the screen. """
+    text_surface = font.render(text, True, color)
+    screen.blit(text_surface, (x, y))
+
 
 def start_screen():
-    while True:
-        screen.fill(BLACK)
-        text = font.render("Press ENTER to Start", True, WHITE)
-        screen.blit(text, ((SCREEN_WIDTH - text.get_width()) // 2, SCREEN_HEIGHT // 2))
-        pygame.display.flip()
+    """ Display the start screen until the player presses a key. """
+    running = True
+    while running:
+        screen.blit(background_image, (0, 0))  # Draw background
+
+        # Draw title
+        draw_text("Welcome to the Game!", fontTwo, WHITE, SCREEN_WIDTH // 5, SCREEN_HEIGHT // 30)
+
+        # Draw button
+        button_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, 200, 50)
+        mouse_pos = pygame.mouse.get_pos()
+
+        # Change button color on hover
+        if button_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, button_hover_color, button_rect)
+        else:
+            pygame.draw.rect(screen, button_color, button_rect)
+
+        current_button_color = button_hover_color if button_rect.collidepoint(mouse_pos) else button_color
+
+        pygame.draw.rect(screen, current_button_color, button_rect, border_radius=9)
+
+        # Draw button text
+        draw_text("Start Game", fontTwo, WHITE, SCREEN_WIDTH // 2 - 95, SCREEN_HEIGHT // 2 + 10)
+
+        # Event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if button_rect.collidepoint(event.pos):
+                    running = False  # Exit the start screen and go to game
+
+        pygame.display.flip()
 
 
 class MainCharacter:
@@ -171,10 +206,12 @@ class MainCharacter:
         if box_position == finish_position:
             level += 1
             stars = generate_star()
-            reset_game()
+            start_new_level()
+
 
 # Create the main character
 excavator = MainCharacter(*start_position)
+
 
 # Draw button
 def draw_button(text, x, y, w, h, color, action=None):
@@ -189,6 +226,7 @@ def draw_button(text, x, y, w, h, color, action=None):
         if pygame.mouse.get_pressed()[0]:
             if action:
                 action()
+
 
 # Game loop
 def main():
@@ -229,7 +267,8 @@ def main():
         screen.blit(box_image, (box_position[0] * CELL_SIZE, box_position[1] * CELL_SIZE))
 
         # Draw finish position
-        pygame.draw.rect(screen, GREEN, (finish_position[0] * CELL_SIZE, finish_position[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        pygame.draw.rect(screen, GREEN,
+                         (finish_position[0] * CELL_SIZE, finish_position[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         # Draw the excavator
         excavator.draw()
@@ -251,6 +290,6 @@ def main():
         pygame.display.flip()
         clock.tick(FPS)
 
+
 if __name__ == "__main__":
     main()
-
