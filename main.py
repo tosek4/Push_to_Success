@@ -29,6 +29,7 @@ pygame.display.set_caption("Push to Success")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 36)
 fontTwo = pygame.font.Font(None, 50)
+fontSmall = pygame.font.Font(None, 23)
 
 # Load assets
 star_image = pygame.transform.scale(pygame.image.load("assets/Star.png"), (CELL_SIZE, CELL_SIZE))
@@ -329,6 +330,11 @@ def main():
         # Display stars collected (Bottom Right)
         stars_text = font.render(f"Stars: {stars_collected}", True, YELLOW)
         screen.blit(stars_text, (SCREEN_WIDTH - stars_text.get_width() - 10, MAP_HEIGHT + 20))
+
+        # Display Active turbo mode
+        if stars_collected >= 5:
+            stars_text = fontSmall.render("Active turbo mode by pressing T", True, RED)
+            screen.blit(stars_text, (SCREEN_WIDTH - stars_text.get_width() - 10, MAP_HEIGHT + 50))
 
         # Draw Reset Button (Center)
         draw_button("Reset", SCREEN_WIDTH // 2 - 50, MAP_HEIGHT + 20, 100, 40, BLUE, reset_game)
