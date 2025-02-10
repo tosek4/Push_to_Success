@@ -35,7 +35,18 @@ star_image = pygame.transform.scale(pygame.image.load("assets/Star.png"), (CELL_
 wall_block = pygame.transform.scale(pygame.image.load("assets/Wall_Block_Tall.png"), (CELL_SIZE, CELL_SIZE))
 box_image = pygame.transform.scale(pygame.image.load("assets/Box.png"), (CELL_SIZE, CELL_SIZE))
 
+TIMER_DURATION  = 30  # Start from 60 seconds (1 minute)
+start_ticks = None
 
+# Load Music 🎵
+pygame.mixer.init()
+pygame.mixer.music.load("assets/start_screen_music.mp3")  # Replace with your music file
+pygame.mixer.music.play(-1)  # Loop the music indefinitely
+
+
+car_move_sound = pygame.mixer.Sound("assets/car_move.mp3")  # Car movement sound
+collect_star_sound = pygame.mixer.Sound("assets/star_collect.mp3")  # Star collection
+turbo_mode = pygame.mixer.Sound("assets/turbo_mode.mp3")  # Star collection
 # Function to generate random target position
 def generate_target_position():
     while True:
@@ -109,21 +120,19 @@ stars_collected = 0
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-pygame.display.set_caption("My Pygame Game")
+pygame.display.set_caption("Push to Success")
 
-# Load background image (optional)
-background_image = pygame.image.load("assets/bg.jpg")  # Ensure the image is in the 'assets' folder
+# Load background image
+background_image = pygame.image.load("assets/bg.jpg")
 background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 
 def draw_text(text, font, color, x, y):
-    """ Helper function to draw text on the screen. """
     text_surface = font.render(text, True, color)
     screen.blit(text_surface, (x, y))
 
 
 def start_screen():
-    """ Display the start screen until the player presses a key. """
     running = True
     while running:
         screen.blit(background_image, (0, 0))  # Draw background
@@ -156,8 +165,13 @@ def start_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if button_rect.collidepoint(event.pos):
                     running = False  # Exit the start screen and go to game
+                    pygame.mixer.music.stop()
 
         pygame.display.flip()
+
+
+start_mode = False
+timer_of_mode = False
 
 
 class MainCharacter:
@@ -178,14 +192,31 @@ class MainCharacter:
         screen.blit(self.images[self.direction], (self.x * CELL_SIZE, self.y * CELL_SIZE))
 
     def move(self, dx, dy, new_direction):
-        global box_position, level, finish_position, obstacles, stars_collected, stars
+        global box_position, level, finish_position, obstacles, stars_collected, stars, timer_of_mode
         self.direction = new_direction
 
         new_x = self.x + dx
         new_y = self.y + dy
 
+        if start_mode:
+            # Check if pushing the box
+            if 0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and (new_x, new_y):
+                if (new_x, new_y) == box_position:
+                    box_new_x, box_new_y = box_position[0] + dx, box_position[1] + dy
+                    if (0 <= box_new_x < GRID_SIZE and 0 <= box_new_y < GRID_SIZE and
+                            (box_new_x, box_new_y) not in obstacles):
+                        box_position = (box_new_x, box_new_y)
+                        self.x = new_x
+                        self.y = new_y
+                    else:
+                        # Edge case: Swap positions instead of pushing
+                        self.x, self.y, box_position = box_position[0], box_position[1], (self.x, self.y)
+                else:
+                    self.x = new_x
+                    self.y = new_y
+
         # Check if moving into obstacles
-        if (0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and (new_x, new_y) not in obstacles):
+        elif 0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and (new_x, new_y) not in obstacles:
             # Check if pushing the box
             if (new_x, new_y) == box_position:
                 box_new_x, box_new_y = box_position[0] + dx, box_position[1] + dy
@@ -194,11 +225,15 @@ class MainCharacter:
                     box_position = (box_new_x, box_new_y)
                     self.x = new_x
                     self.y = new_y
+                else:
+                    # Edge case: Swap positions instead of pushing
+                    self.x, self.y, box_position = box_position[0], box_position[1], (self.x, self.y)
             else:
                 self.x = new_x
                 self.y = new_y
         # Check if reached a star
         if (self.x, self.y) in stars:
+            collect_star_sound.play()
             stars_collected += 1
             stars.remove((self.x, self.y))
 
@@ -231,23 +266,34 @@ def draw_button(text, x, y, w, h, color, action=None):
 # Game loop
 def main():
     start_screen()
-    global excavator
+    global excavator, start_mode, stars_collected, start_ticks
     while True:
         screen.fill(GRAY)
 
-        # Event handling
+
+            # Event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_t:
+                    if stars_collected >= 5:
+                        start_mode = True
+                        turbo_mode.play()
+                        start_ticks = pygame.time.get_ticks()
+                        stars_collected = stars_collected - 5
                 if event.key == pygame.K_UP:
+                    car_move_sound.play()
                     excavator.move(0, -1, "up")
                 if event.key == pygame.K_DOWN:
+                    car_move_sound.play()
                     excavator.move(0, 1, "down")
                 if event.key == pygame.K_LEFT:
+                    car_move_sound.play()
                     excavator.move(-1, 0, "left")
                 if event.key == pygame.K_RIGHT:
+                    car_move_sound.play()
                     excavator.move(1, 0, "right")
 
         # Draw grid
@@ -286,6 +332,20 @@ def main():
 
         # Draw Reset Button (Center)
         draw_button("Reset", SCREEN_WIDTH // 2 - 50, MAP_HEIGHT + 20, 100, 40, BLUE, reset_game)
+
+        if start_mode:
+            elapsed_seconds = (pygame.time.get_ticks() - start_ticks) // 1000
+            remaining_time = max(0, TIMER_DURATION - elapsed_seconds)
+
+            minutes = remaining_time // 60
+            seconds = remaining_time % 60
+            timer_text = f"{minutes}:{seconds:02d} s"
+
+            text_surface = font.render(timer_text, True, RED)
+            screen.blit(text_surface, (SCREEN_WIDTH / 2.2, SCREEN_HEIGHT / 2.3))
+
+            if remaining_time == 0:
+                start_mode = False
 
         pygame.display.flip()
         clock.tick(FPS)
