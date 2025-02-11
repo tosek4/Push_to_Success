@@ -48,11 +48,21 @@ pygame.mixer.music.play(-1)  # Loop the music indefinitely
 car_move_sound = pygame.mixer.Sound("assets/car_move.mp3")  # Car movement sound
 collect_star_sound = pygame.mixer.Sound("assets/star_collect.mp3")  # Star collection
 turbo_mode = pygame.mixer.Sound("assets/turbo_mode.mp3")  # Star collection
-# Function to generate random target position
-def generate_target_position():
+end_game_mode = pygame.mixer.Sound('assets/end_game.mp3')  # Star collection
+
+def generate_end_game_position():
     while True:
         tx, ty = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
         if (tx, ty) != (5, 5):
+            return tx, ty
+
+
+end_game_position = generate_end_game_position()
+
+def generate_target_position():
+    while True:
+        tx, ty = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
+        if (tx, ty) != (5, 5) and (tx, ty) != end_game_position:
             return tx, ty
 
 
@@ -60,14 +70,14 @@ def generate_obstacles():
     obstacles = set()
     while len(obstacles) < 15:
         ox, oy = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
-        if (ox, oy) not in start_positions and (ox, oy) != finish_position:
+        if (ox, oy) not in start_positions and (ox, oy) != finish_position and (ox, oy) != end_game_position:
             obstacles.add((ox, oy))
     return obstacles
 
 
 def generate_star():
     valid_positions = set((x, y) for x in range(GRID_SIZE) for y in range(GRID_SIZE))
-    invalid_positions = obstacles | {finish_position, box_position}
+    invalid_positions = obstacles | {finish_position, box_position, end_game_position}
     possible_positions = list(valid_positions - invalid_positions)
 
     if not possible_positions:
@@ -80,7 +90,7 @@ def generate_star():
 def generate_box_position():
     while True:
         bx, by = random.randint(1, GRID_SIZE - 2), random.randint(1, GRID_SIZE - 2)
-        if (bx, by) not in obstacles and (bx, by) != finish_position:
+        if (bx, by) not in obstacles and (bx, by) != finish_position and (bx, by) != end_game_position:
             adjacent_positions = {
                 (bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1),
                 (bx + 1, by + 1), (bx - 1, by - 1), (bx + 1, by - 1), (bx - 1, by + 1)
@@ -90,8 +100,9 @@ def generate_box_position():
 
 
 def start_new_level():
-    global excavator, finish_position, obstacles, box_position, level, stars_collected, stars
+    global excavator, finish_position, obstacles, box_position, level, stars_collected, stars,end_game_position
     finish_position = generate_target_position()
+    end_game_position = generate_end_game_position()
     obstacles = generate_obstacles()
     box_position = generate_box_position()
     excavator = MainCharacter(random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1))
@@ -99,8 +110,9 @@ def start_new_level():
 
 
 def reset_game():
-    global excavator, finish_position, obstacles, box_position, level, stars_collected, stars
+    global excavator, finish_position, obstacles, box_position, level, stars_collected, stars,end_game_position
     finish_position = generate_target_position()
+    end_game_position = generate_end_game_position()
     obstacles = generate_obstacles()
     box_position = generate_box_position()
     stars_collected = 0
@@ -132,6 +144,57 @@ def draw_text(text, font, color, x, y):
     text_surface = font.render(text, True, color)
     screen.blit(text_surface, (x, y))
 
+
+button_rect = pygame.Rect(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 + 50, 200, 50)
+
+def draw_start_again_button():
+    """ Draw restart button """
+    pygame.draw.rect(screen, GREEN, button_rect)
+    text = font.render("Start Again", True, WHITE)
+    screen.blit(text, (button_rect.x + 25, button_rect.y + 10))
+
+def game_over_screen():
+    # Load Music 🎵
+    pygame.mixer.init()
+    pygame.mixer.music.load("assets/end_game.mp3")  # Replace with your music file
+    pygame.mixer.music.play(-1)  # Loop the music indefinitely
+
+    """ Displays a game over animation and restart button """
+    alpha = 0  # For fading effect
+    fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    fade_surface.fill(BLACK)
+
+    running = True
+    while running:
+        screen.fill(WHITE)
+
+        # Animation: Fade-in effect
+        if alpha < 255:
+            alpha += 5  # Increase transparency
+        fade_surface.set_alpha(alpha)  # Apply transparency
+        screen.blit(fade_surface, (0, 0))  # Draw fade effect
+
+        # Display Game Over text
+        game_over_text = font.render("Game Over", True, RED)
+        screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 100))
+
+        # Draw restart button
+        draw_start_again_button()
+
+        pygame.display.flip()
+
+        # Event Handling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return False  # Exit loop
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if button_rect.collidepoint(event.pos):
+                    pygame.mixer.music.stop()  # Stop game over music before restarting
+                    return start_new_level()  # Restart game
+
+    return False
 
 def start_screen():
     running = True
@@ -193,7 +256,7 @@ class MainCharacter:
         screen.blit(self.images[self.direction], (self.x * CELL_SIZE, self.y * CELL_SIZE))
 
     def move(self, dx, dy, new_direction):
-        global box_position, level, finish_position, obstacles, stars_collected, stars, timer_of_mode
+        global box_position, level, finish_position, obstacles, stars_collected, stars, timer_of_mode, end_game_position
         self.direction = new_direction
 
         new_x = self.x + dx
@@ -243,6 +306,12 @@ class MainCharacter:
             level += 1
             stars = generate_star()
             start_new_level()
+
+        # Check if the box is at the end position
+        if box_position == end_game_position:
+            level = 1
+            stars_collected = 0
+            game_over_screen()
 
 
 # Create the main character
@@ -316,6 +385,10 @@ def main():
         # Draw finish position
         pygame.draw.rect(screen, GREEN,
                          (finish_position[0] * CELL_SIZE, finish_position[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+        # Draw end game position
+        pygame.draw.rect(screen, RED,
+                         (end_game_position[0] * CELL_SIZE, end_game_position[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         # Draw the excavator
         excavator.draw()
