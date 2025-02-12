@@ -139,44 +139,51 @@ pygame.display.set_caption("Push to Success")
 background_image = pygame.image.load("assets/bg.jpg")
 background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
+background_game_over_image = pygame.image.load("assets/game_over_image.png")
+background_game_over_image = pygame.transform.scale(background_game_over_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
 
 def draw_text(text, font, color, x, y):
     text_surface = font.render(text, True, color)
     screen.blit(text_surface, (x, y))
 
 
-button_rect = pygame.Rect(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 + 50, 200, 50)
+button_rect = pygame.Rect(390, MAP_HEIGHT + 20, 200, 50)
 
 def draw_start_again_button():
     """ Draw restart button """
     pygame.draw.rect(screen, GREEN, button_rect)
-    text = font.render("Start Again", True, WHITE)
-    screen.blit(text, (button_rect.x + 25, button_rect.y + 10))
-
+    text = fontTwo.render("Start Again", True, WHITE)
+    screen.blit(text, (button_rect.x + 10, button_rect.y + 10))
+SCREEN_WIDTH // 2 - 50, MAP_HEIGHT + 20
 def game_over_screen():
     # Load Music 🎵
     pygame.mixer.init()
     pygame.mixer.music.load("assets/end_game.mp3")  # Replace with your music file
     pygame.mixer.music.play(-1)  # Loop the music indefinitely
 
-    """ Displays a game over animation and restart button """
-    alpha = 0  # For fading effect
-    fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-    fade_surface.fill(BLACK)
+    # """ Displays a game over animation and restart button """
+    # alpha = 0  # For fading effect
+    # fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    # fade_surface.fill(BLACK)
 
     running = True
     while running:
-        screen.fill(WHITE)
+        screen.fill(BLACK)
+        screen.blit(background_game_over_image, (0, 0))  # Draw background
 
         # Animation: Fade-in effect
-        if alpha < 255:
-            alpha += 5  # Increase transparency
-        fade_surface.set_alpha(alpha)  # Apply transparency
-        screen.blit(fade_surface, (0, 0))  # Draw fade effect
+        # if alpha < 255:
+        #     alpha += 5  # Increase transparency
+        # fade_surface.set_alpha(alpha)  # Apply transparency
+        # screen.blit(fade_surface, (0, 0))  # Draw fade effect
 
         # Display Game Over text
-        game_over_text = font.render("Game Over", True, RED)
-        screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 100))
+        # game_over_text = font.render("Game Over", True, RED)
+        # screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 100))
+
+        draw_text("Game Over!", fontTwo, RED,SCREEN_WIDTH // 2 - 95, SCREEN_HEIGHT // 2 - 100)
+
 
         # Draw restart button
         draw_start_again_button()
